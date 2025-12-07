@@ -2,6 +2,24 @@
 set -e
 
 # ------------------------------------
+# Description: Deploy Azure Resource Groups, VNets, Subnets, NSGs, Log Analytics Workspace, 
+#              NSP, VNet Flow Logs, Diagnostics & Observability dashboards using YAML config
+# Usage:
+#   ./S1.deploy.sh [ACTION] [CONFIG_FILE]
+#
+# Arguments:
+#   ACTION       - Optional. What to do: "plan" or "apply". Default is "plan".
+#                  plan  : Only prints what would be created, does not apply changes.
+#                  apply : Actually creates resources in Azure.
+#   CONFIG_FILE  - Optional. Path to YAML configuration file. Default: ./S1.yaml
+#
+#
+# Requirements:
+#   - Azure CLI (az) installed and logged in
+#   - yq installed for parsing YAML
+#   - Bash 4+ for array support
+
+# ------------------------------------
 # UI Componenets and Arguments
 # ------------------------------------
 GREEN='\033[0;32m'
@@ -43,6 +61,7 @@ VNET_PATTERN=$(yq -r '.naming.vnet' "$CONFIG_FILE")
 SUBNET_PATTERN=$(yq -r '.naming.subnet' "$CONFIG_FILE")
 NSP_PATTERN=$(yq -r '.naming.nsp' "$CONFIG_FILE")
 LAW_PATTERN=$(yq -r '.naming.law' "$CONFIG_FILE")
+STORAGE_ACCOUNT_PATTERN=$(yq -r '.naming.storage' "$CONFIG_FILE")
 
 # ---------------------------------------------
 # Function to render a naming pattern
@@ -89,33 +108,9 @@ for rg in "${RG_LIST[@]}"; do
 
     echo -e "${GREEN}Creating RG:${NC} $rg_name"
     if [[ "$ACTION" == "apply" ]]; then
-        az group create --name "$rg_name" --location "$REGION" --tags $TAGS
+        az group create --name "$rg_name" --location "$REGION" --tags "$TAGS"
     fi
 done
-
-# ---------------------------------------------
-# Deploy Monitoring Resources
-# ---------------------------------------------
-echo -e "${CYAN}Deploying Monitoring Resources...${NC}"
-if [[ "$(yq e '.log_analytics_workspace | length' "$CONFIG_FILE")" -eq 0 ]]; then
-    echo -e "${YELLOW}No Log Analytics Workspace defined. Skipping LAW deploy.${NC}"
-else
-    RG_MONITOR=$(render_name "$RG_PATTERN" "${RG_LIST[2]}") # need to fix later
-    LAW_YAML_NAME=$(yq e '.log_analytics_workspace' "$CONFIG_FILE")
-    LAW_NAME=$(render_name "$LAW_PATTERN" "$LAW_YAML_NAME")
-    echo -e "${GREEN}Creating LAW:${NC} $LAW_NAME"
-    if [[ "$ACTION" == "apply" ]]; then
-        az monitor log-analytics workspace create --resource-group "$RG_MONITOR" --workspace-name "$LAW_NAME"
-    fi    
-fi
-
-if [[ "$(yq e '.is_network_watcher_needed' "$CONFIG_FILE")" == "yes" ]]; then
-    RG_MONITOR=$(render_name "$RG_PATTERN" "${RG_LIST[2]}") # need to fix later
-    echo -e "${GREEN}Deploying network watcher for region:${NC} $REGION"
-    if [[ "$ACTION" == "apply" ]]; then
-        az network watcher configure --resource-group "RG_MONITOR" --locations "$REGION" --enabled
-    fi 
-fi
 
 # ---------------------------------------------
 # Deploy Network
@@ -139,7 +134,7 @@ else
               --resource-group "$RG_NETWORK" \
               --name "$VNET_NAME" \
               --address-prefix "$VNET_CIDR" \
-              --tags $TAGS
+              --tags "$TAGS"
       fi
 
       # Loop over subnets
@@ -155,7 +150,7 @@ else
             az network nsg create \
                 --resource-group "$RG_NETWORK" \
                 --name "$NSG_NAME" \
-                --tags $TAGS
+                --tags "$TAGS"
           fi
           for RULE in $RULES; do
             [[ -z "$RULE" || "$RULE" == "null" ]] && continue
@@ -205,9 +200,33 @@ else
     NSP_NAME=$(render_name "$NSP_PATTERN" "$NSP_YAML_NAME")
     echo -e "${GREEN}Creating NSP:${NC} $NSP_NAME"
     if [[ "$ACTION" == "apply" ]]; then
-        echo "some az commands"
+        az network perimeter create --name "$NSP_NAME" --resource-group "$RG_NETWORK"  --location "$REGION" --tags "$TAGS"
     fi
 
+fi
+
+# ---------------------------------------------
+# Deploy Monitoring Resources
+# ---------------------------------------------
+echo -e "${CYAN}Deploying Monitoring Resources...${NC}"
+if [[ "$(yq e '.log_analytics_workspace | length' "$CONFIG_FILE")" -eq 0 ]]; then
+    echo -e "${YELLOW}No Log Analytics Workspace defined. Skipping LAW deploy.${NC}"
+else
+    RG_MONITOR=$(render_name "$RG_PATTERN" "${RG_LIST[2]}") # need to fix later
+    LAW_YAML_NAME=$(yq e '.log_analytics_workspace' "$CONFIG_FILE")
+    LAW_NAME=$(render_name "$LAW_PATTERN" "$LAW_YAML_NAME")
+    echo -e "${GREEN}Creating LAW:${NC} $LAW_NAME"
+    if [[ "$ACTION" == "apply" ]]; then
+        az monitor log-analytics workspace create --resource-group "$RG_MONITOR" --workspace-name "$LAW_NAME" --tags "$TAGS"
+    fi    
+fi
+
+if [[ "$(yq e '.is_network_watcher_needed' "$CONFIG_FILE")" == "yes" ]]; then
+    RG_MONITOR=$(render_name "$RG_PATTERN" "${RG_LIST[2]}") # need to fix later
+    echo -e "${GREEN}Deploying network watcher for region:${NC} $REGION"
+    if [[ "$ACTION" == "apply" ]]; then
+        az network watcher configure --resource-group "RG_MONITOR" --locations "$REGION" --enabled
+    fi 
 fi
 
 # ---------------------------------------------
@@ -216,66 +235,69 @@ fi
 
 if [[ "$(yq e '.is_diagnostics_enabled' "$CONFIG_FILE")" == "yes" ]]; then
     echo -e "${CYAN}Enabling Diagnostics & Traffic Analytics...${NC}"
-
-    # LAW + Storage (required for flow logs)
     RG_MONITOR=$(render_name "$RG_PATTERN" "${RG_LIST[2]}") # needs fix
+    RG_NETWORK=$(render_name "$RG_PATTERN" "${RG_LIST[0]}") # need to fix later
     LAW_YAML_NAME=$(yq e '.log_analytics_workspace' "$CONFIG_FILE")
     LAW_NAME=$(render_name "$LAW_PATTERN" "$LAW_YAML_NAME")
-
-    LAW_ID=$(az monitor log-analytics workspace show \
-        --resource-group "$RG_MONITOR" \
-        --workspace-name "$LAW_NAME" \
-        --query id -o tsv)
-
-    # Storage account for flow logs (you can later move this to YAML)
-    STORAGE_ACCOUNT_NAME=$(yq e '.diagnostics_storage_account' "$CONFIG_FILE")
-    STORAGE_ID=$(az storage account show \
-        --resource-group "$RG_MONITOR" \
-        --name "$STORAGE_ACCOUNT_NAME" \
-        --query id -o tsv)
-
-    echo -e "${GREEN}Using LAW:${NC} $LAW_NAME"
-    echo -e "${GREEN}Using Storage:${NC} $STORAGE_ACCOUNT_NAME"
-
-    # ---------------------------------------------------
-    # Enable Diagnostics for ALL NSGs in the solution
-    # ---------------------------------------------------
-    echo -e "${CYAN}Configuring NSG Diagnostics...${NC}"
-
-    NSGS=$(az network nsg list --resource-group "$RG_NETWORK" --query "[].name" -o tsv)
-
-    for NSG in $NSGS; do
-        echo -e "  ${GREEN}→ NSG:${NC} $NSG"
-
-        # 1. NSG Diagnostic Settings
-        az monitor diagnostic-settings create \
-            --name "diag-$NSG" \
-            --resource "$NSG" \
-            --resource-group "$RG_NETWORK" \
-            --resource-type "Microsoft.Network/networkSecurityGroups" \
-            --workspace "$LAW_ID" \
-            --logs '[
-                {"category": "NetworkSecurityGroupEvent", "enabled": true},
-                {"category": "NetworkSecurityGroupRuleCounter", "enabled": true}
-            ]' \
-            --output none
-
-        # 2. NSG Flow Logs + Traffic Analytics
-        az network watcher flow-log configure \
+    if [[ "$ACTION" == "apply" ]]; then
+        LAW_ID=$(az monitor log-analytics workspace show \
             --resource-group "$RG_MONITOR" \
-            --nsg "$NSG" \
-            --enabled true \
-            --format JSON \
-            --retention 30 \
-            --traffic-analytics true \
-            --workspace "$LAW_ID" \
-            --storage-account "$STORAGE_ID" \
-            --interval 10 \
-            --output none
+            --workspace-name "$LAW_NAME" \
+            --query id -o tsv)
+    fi
+    
+    echo "LAW_ID: $LAW_ID"
 
-        echo -e "     ${YELLOW}Diagnostics + Flow Logs enabled${NC}"
+    # deploy Storage account for flow logs
+    STORAGE_ACCOUNT_YAML_NAME=$(yq e '.diagnostics_storage_account' "$CONFIG_FILE")
+    STORAGE_ACCOUNT_NAME=$(render_name "$STORAGE_ACCOUNT_PATTERN" "$STORAGE_ACCOUNT_YAML_NAME" "01")
+    STORAGE_ACCOUNT_NAME=${STORAGE_ACCOUNT_NAME//-/} # Remove hyphens
+    if [[ "$ACTION" == "apply" ]]; then
+        # Create storage account if it doesn't exist
+        az storage account create \
+            --name "$STORAGE_ACCOUNT_NAME" \
+            --resource-group "$RG_MONITOR" \
+            --location "$REGION" \
+            --sku Standard_LRS \
+            --kind StorageV2 \
+            --tags "$TAGS"
+
+        # Get the full resource ID for flow log configuration
+        STORAGE_ID=$(az storage account show \
+            --name "$STORAGE_ACCOUNT_NAME" \
+            --resource-group "$RG_MONITOR" \
+            --query id -o tsv)
+    fi
+    echo -e "${GREEN}Creating storage account for flow logs:${NC} $STORAGE_ACCOUNT_NAME"
+
+    echo -e "${GREEN}Using LAW:${NC} $LAW_ID"
+    echo -e "${GREEN}Using Storage:${NC} $STORAGE_ID"
+
+    # ---------------------------------------------------
+    # Enable Flow logs on vnet
+    # ---------------------------------------------------
+    echo -e "${CYAN}Configuring VNET flow logs...${NC}"
+    vnet_count=$(yq e '.vnets | length' "$CONFIG_FILE")
+
+    for i in $(seq 0 $((vnet_count - 1))); do
+        VNET_YAML_NAME=$(yq e ".vnets[$i].name" "$CONFIG_FILE")
+        VNET_NAME=$(render_name "$VNET_PATTERN" "$VNET_YAML_NAME")
+        
+        echo -e "${GREEN}Enabling VNet flow logs for VNet:${NC} $VNET_NAME"
+        
+        if [[ "$ACTION" == "apply" ]]; then
+            az network watcher flow-log create \
+                --location "$REGION" \
+                --resource-group "$RG_NETWORK" \
+                --name "flow-$VNET_NAME" \
+                --vnet "$VNET_NAME" \
+                --storage-account "$STORAGE_ID" \
+                --traffic-analytics true \
+                --workspace "$LAW_ID" \
+                --retention 30 \
+                --interval 10
+        fi
     done
-
 
     # ---------------------------------------------------
     # Enable Diagnostics for NSP
@@ -285,17 +307,17 @@ if [[ "$(yq e '.is_diagnostics_enabled' "$CONFIG_FILE")" == "yes" ]]; then
         NSP_NAME=$(render_name "$NSP_PATTERN" "$NSP_YAML_NAME")
 
         echo -e "${CYAN}Configuring NSP Diagnostics for:${NC} $NSP_NAME"
-
-        az monitor diagnostic-settings create \
-            --name "diag-set-01" \
-            --resource "$NSP_NAME" \
-            --resource-group "$RG_NETWORK" \
-            --resource-type "Microsoft.Network/networkSecurityPerimeters" \
-            --workspace "$LAW_ID" \
-            --logs '[{"categoryGroup": "allLogs", "enabled": true}]' \
-            --output none
-
-        echo -e "   ${GREEN}→ NSP diagnostics enabled (allLogs)${NC}"
+        if [[ "$ACTION" == "apply" ]]; then
+            az monitor diagnostic-settings create \
+                --name "diag-set-01" \
+                --resource "$NSP_NAME" \
+                --resource-group "$RG_NETWORK" \
+                --resource-type "Microsoft.Network/networkSecurityPerimeters" \
+                --workspace "$LAW_ID" \
+                --logs '[{"categoryGroup": "allLogs", "enabled": true}]' \
+                --output none
+            echo -e "   ${GREEN}→ NSP diagnostics enabled (allLogs)${NC}"
+        fi       
     fi
 
 else

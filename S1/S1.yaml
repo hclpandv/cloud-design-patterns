@@ -49,7 +49,7 @@ custom_nsg_rules:
     source: '*'
     source_ports: '*'
     destination: '*'
-    destination_ports: '80, 443'
+    destination_ports: '80'
 
 custom_nsp_rules:
   # inbounds rules
@@ -97,6 +97,7 @@ nsp: main
 # Monitoring and Observability
 log_analytics_workspace: main
 is_diagnostics_enabled: yes
+diagnostics_storage_account: lzdiag
 is_network_watcher_needed: yes
 is_dashbord_needed: yes
 
