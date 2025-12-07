@@ -235,7 +235,7 @@ if [[ "$(yq e '.is_network_watcher_needed' "$CONFIG_FILE")" == "yes" ]]; then
     RG_MONITOR=$(render_name "$RG_PATTERN" "${RG_LIST[2]}") # need to fix later
     echo -e "${GREEN}Deploying network watcher for region:${NC} $REGION"
     if [[ "$ACTION" == "apply" ]]; then
-        az network watcher configure --resource-group "RG_MONITOR" --locations "$REGION" --enabled
+        az network watcher configure --resource-group "$RG_MONITOR" --locations "$REGION" --enabled
     fi 
 fi
 
