@@ -343,10 +343,17 @@ if [[ "$(yq e '.is_dashbord_needed' "$CONFIG_FILE")" == "yes" ]]; then
 fi
 
 
-
 # ---------------------------------------------
 # Test WorkLoads deployment
 # ---------------------------------------------
+
+DEPLOYED_WORKLOAD="No"
+
+if [[ "$DEPLOYED_WORKLOAD" == "No" ]]; then
+    echo -e "${YELLOW}Workloads deployment skipped${NC}"
+    exit 0
+fi
+
 echo -e "${CYAN}################################${NC}"
 echo -e "${CYAN}Deploying customer workloads...${NC}"
 echo -e "${CYAN}################################${NC}"
