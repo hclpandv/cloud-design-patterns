@@ -54,6 +54,7 @@ custom_nsg_rules:
 custom_nsp_rules:
   # inbounds rules
   allowHttpInboundFromOffice:
+    source: "['46.250.205.8/32']"
 
 tags:
   environment: poc #dev

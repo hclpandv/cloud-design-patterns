@@ -2,8 +2,6 @@
 set -e
 
 # ------------------------------------
-# Description: Deploy Azure Resource Groups, VNets, Subnets, NSGs, Log Analytics Workspace, 
-#              NSP, VNet Flow Logs, Diagnostics & Observability dashboards using YAML config
 # Usage:
 #   ./S1.deploy.sh [ACTION] [CONFIG_FILE]
 #
@@ -12,12 +10,8 @@ set -e
 #                  plan  : Only prints what would be created, does not apply changes.
 #                  apply : Actually creates resources in Azure.
 #   CONFIG_FILE  - Optional. Path to YAML configuration file. Default: ./S1.yaml
-#
-#
-# Requirements:
-#   - Azure CLI (az) installed and logged in
-#   - yq installed for parsing YAML
-#   - Bash 4+ for array support
+# ------------------------------------
+
 
 # ------------------------------------
 # UI Componenets and Arguments
@@ -199,8 +193,24 @@ else
     NSP_YAML_NAME=$(yq e '.nsp' "$CONFIG_FILE")
     NSP_NAME=$(render_name "$NSP_PATTERN" "$NSP_YAML_NAME")
     echo -e "${GREEN}Creating NSP:${NC} $NSP_NAME"
+    
     if [[ "$ACTION" == "apply" ]]; then
+        # deploy Network security perimeter
         az network perimeter create --name "$NSP_NAME" --resource-group "$RG_NETWORK"  --location "$REGION" --tags "$TAGS"
+        # Create a default profile
+        az network perimeter profile create -n "defaultProfile" --perimeter-name "$NSP_NAME" -g "$RG_NETWORK"
+        # Common rules in default profile
+        NSP_RULES=$(yq -r '.custom_nsp_rules | keys | .[]' "$CONFIG_FILE")
+        for RULE in $NSP_RULES; do
+            SOURCE=$(yq -r ".custom_nsp_rules.$RULE.source" "$CONFIG_FILE")
+            echo -e "    ${GREEN}→ NSP Rule:${NC} $RULE (SOURCE=$SOURCE)"
+            az network perimeter profile access-rule create \
+                --name "$RULE" \
+                --profile-name "defaultProfile" \
+                --perimeter-name "$NSP_NAME"  \
+                --resource-group "$RG_NETWORK" \
+                --address-prefixes "$SOURCE"
+        done    
     fi
 
 fi
