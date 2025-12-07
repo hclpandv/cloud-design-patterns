@@ -1,0 +1,103 @@
+# Baseline definition of S1 Azure infrastructure design
+purpose: Minimal but secure Azure footprint for 1-2 compute components
+pattern_type: s1
+
+# Variables
+organization_name: vks
+region: westeurope
+
+region_map:
+  westeurope: weu
+  northeurope: neu
+  norwayeast: noe
+  norwaywest: now
+
+naming:
+  resource_group: "rg-{region}-{org}-{pattern}-{name}"
+  vnet: "vnet-{region}-{org}-{pattern}-{name}"
+  subnet: "snet-{name}"
+  nsg: "nsg-{name}"
+  routetable: "rt-{name}"
+  public_ip: "pip-{region}-{org}-{pattern}-{name}"
+  lb: "lb-{region}-{org}-{pattern}-{name}"
+  storage: "st{org}{region}{pattern}{name}"
+  law: "law-{region}-{org}-{pattern}-{name}"
+  nsp: "nsp-{region}-{org}-{pattern}-{name}"
+
+custom_nsg_rules:
+  # inbounds rules
+  allowSSHInboundFromAll:
+    priority: 200 
+    protocol: tcp
+    direction: inbound
+    source: '*'
+    source_ports: '*'
+    destination: '*'
+    destination_ports: 22
+  allowRDPInboundFromAll:
+    priority: 210
+    protocol: tcp
+    direction: inbound
+    source: '*'
+    source_ports: '*'
+    destination: '*'
+    destination_ports: 3389
+  allowHTTPInboundFromAll:
+    priority: 220
+    protocol: tcp
+    direction: inbound
+    source: '*'
+    source_ports: '*'
+    destination: '*'
+    destination_ports: '80, 443'
+
+custom_nsp_rules:
+  # inbounds rules
+  allowHttpInboundFromOffice:
+
+tags:
+  environment: poc #dev
+  owner: emp
+  deployed_by: az_cli
+  deployment_type: S1
+
+
+# Resource Groups
+resource_groups:
+  - landingzone
+  - workload
+  - surveillance
+  #- watchtower
+
+# Virtual Network
+vnets:
+  - name: main
+    cidr: 10.10.0.0/16
+    subnets:
+      - name: service-room
+        cidr: 10.10.1.0/24
+          
+      - name: compute-room
+        cidr: 10.10.2.0/24
+        nsg_rules:
+          allowHTTPInboundFromAll
+
+      - name: control-room
+        cidr: 10.10.3.0/24
+        nsg_rules:
+          allowSSHInboundFromAll
+          allowRDPInboundFromAll
+
+      - name: storage-room
+        cidr: 10.10.4.0/24
+
+# Network Security Parimeter
+nsp: main
+
+# Monitoring and Observability
+log_analytics_workspace: main
+is_diagnostics_enabled: yes
+is_network_watcher_needed: yes
+is_dashbord_needed: yes
+
+
