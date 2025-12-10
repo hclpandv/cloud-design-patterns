@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cloud Blueprint</title>
+
+<!-- Bootstrap -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+
+<!-- YAML Parser -->
+<script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+
+<style>
+body {
+    background: #f8f9fa;
+}
+.card {
+    margin-bottom: 1rem;
+}
+.section-title {
+    margin-top: 2rem;
+}
+</style>
+
+</head>
+<body class="p-4">
+
+<div class="container">
+
+    <h1 class="mb-4">Azure Blueprint Viewer</h1>
+
+    <p>Select an S1/S2 YAML definition file:</p>
+    <input type="file" id="yamlFile" class="form-control">
+
+    <div id="output" class="mt-4"></div>
+
+</div>
+
+<script>
+document.getElementById('yamlFile').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = function(evt) {
+        try {
+            const yamlText = evt.target.result;
+            const data = jsyaml.load(yamlText);
+
+            renderBlueprint(data);
+        } catch (err) {
+            document.getElementById("output").innerHTML =
+                `<div class="alert alert-danger">Error parsing YAML: ${err}</div>`;
+        }
+    };
+
+    reader.readAsText(file);
+});
+
+function renderBlueprint(bp) {
+    let html = "";
+
+    // TITLE CARD
+    html += `
+    <div class="card">
+        <div class="card-body">
+            <h2>${bp.pattern_type?.toUpperCase()} Blueprint</h2>
+            <p><strong>Purpose:</strong> ${bp.purpose || "N/A"}</p>
+            <p><strong>Region:</strong> ${bp.region}</p>
+        </div>
+    </div>`;
+
+    // RESOURCE GROUPS
+    if (bp.resource_groups) {
+        html += `<h3 class="section-title">Resource Groups</h3>`;
+        html += `<div class="row">`;
+        bp.resource_groups.forEach(rg => {
+            html += `
+            <div class="col-md-4">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5>${rg}</h5>
+                        <p>Auto-named using: <br><code>${bp.naming?.resource_group}</code></p>
+                    </div>
+                </div>
+            </div>`;
+        });
+        html += `</div>`;
+    }
+
+    // VNETS & SUBNETS
+    if (bp.vnets) {
+        html += `<h3 class="section-title">Virtual Networks</h3>`;
+        bp.vnets.forEach(vnet => {
+            html += `
+            <div class="card">
+                <div class="card-body">
+                    <h4>VNet: ${vnet.name}</h4>
+                    <p><strong>CIDR:</strong> ${vnet.cidr}</p>
+                    <h5>Subnets:</h5>
+                    <ul>`;
+            vnet.subnets?.forEach(sn => {
+                html += `<li><strong>${sn.name}</strong> — ${sn.cidr}</li>`;
+            });
+            html += `</ul></div></div>`;
+        });
+    }
+
+    // NSP
+    if (bp.nsp) {
+        html += `
+        <h3 class="section-title">Network Security Perimeter</h3>
+        <div class="card"><div class="card-body">
+            <p><strong>NSP Name:</strong> ${bp.nsp}</p>
+            <p>Provides secure perimeter for PaaS traffic.</p>
+        </div></div>`;
+    }
+
+    // LOG ANALYTICS
+    if (bp.log_analytics_workspace) {
+        html += `
+        <h3 class="section-title">Monitoring & Observability</h3>
+        <div class="card"><div class="card-body">
+            <p><strong>Log Analytics Workspace:</strong> ${bp.log_analytics_workspace}</p>
+            <p><strong>Diagnostics Enabled:</strong> ${bp.is_diagnostics_enabled}</p>
+            <p><strong>Network Watcher:</strong> ${bp.is_network_watcher_needed}</p>
+            <p><strong>Dashboard:</strong> ${bp.is_dashbord_needed}</p>
+        </div></div>`;
+    }
+
+    // TAGS
+    if (bp.tags) {
+        html += `
+        <h3 class="section-title">Tags</h3>
+        <div class="card"><div class="card-body">
+        <ul>`;
+        Object.keys(bp.tags).forEach(t =>
+            html += `<li><strong>${t}:</strong> ${bp.tags[t]}</li>`
+        );
+        html += `</ul></div></div>`;
+    }
+
+    document.getElementById("output").innerHTML = html;
+}
+</script>
+
+</body>
+</html>
