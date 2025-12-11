@@ -13,6 +13,7 @@ region_map:
   norwaywest: now
 
 naming:
+  subscriptions: "sub-{region}-{org}-{pattern}-{name}"
   resource_group: "rg-{region}-{org}-{pattern}-{name}"
   vnet: "vnet-{region}-{org}-{pattern}-{name}"
   subnet: "snet-{name}"
@@ -63,6 +64,11 @@ tags:
   deployment_type: S1
 
 
+# Subscription
+subscriptions:
+  - name: main 
+    id: s4am79pl-2081-4f1e-8vk4-5c600d3bafc2
+
 # Resource Groups
 resource_groups:
   - landingzone
@@ -102,4 +108,10 @@ diagnostics_storage_account: lzdiag
 is_network_watcher_needed: yes
 is_dashbord_needed: yes
 
+# Workload
+workload:
+  - name: vm01
+    type: virtual-machine
+  - name: st01
+    type: storage-account
 

@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Azure Blueprint Viewer</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<style>
+body {
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background: #f4f6fa; padding: 20px; color: #222;
+}
+
+/* Category colors from reference */
+.c-core { background: linear-gradient(180deg,#082a3a,#052330); }
+.c-security { background: linear-gradient(180deg,#3b1352,#2b0b3b); }
+.c-observ { background: linear-gradient(180deg,#123a0f,#0b290a); }
+.c-diagnostics { background: linear-gradient(180deg,#623214,#3a1b0d); }
+.c-workload { background: linear-gradient(180deg,#0b386e,#03234a); }
+.c-governance { background: linear-gradient(180deg,#2f3a0d,#1f2609); }
+
+/* Subscription boundary */
+.subscription-boundary {
+  border: 2px dashed #e6eef6; border-radius:12px; padding:16px; margin-bottom:20px;
+  color:#e6eef6; transition: opacity 0.2s ease;
+}
+.subscription-header { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+.subscription-header img { width:24px; height:24px; margin-right:6px; }
+.subscription-title { font-weight:700; display:flex; align-items:center; }
+.subscription-meta { font-size:0.85rem; color:#a0aec0; }
+
+/* Blueprint layout */
+.blueprint-row { display:flex; gap:20px; align-items:flex-start; flex-wrap: wrap; }
+.col-left, .col-right { flex:1; min-width:280px; }
+
+/* RG Cards */
+.rg-card {
+  background: transparent; /* ensures no fill */
+  border: 2px dotted #6c757d; border-radius:10px; padding:12px; margin-bottom:16px;
+  color:#e6eef6; transition: opacity 0.2s ease;
+}
+.rg-title { font-weight:700; margin-bottom:10px; display:flex; align-items:center; font-size:0.95rem; }
+.rg-title img { width:18px; height:18px; margin-right:6px; }
+
+/* Tiles */
+.tile-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap:10px; margin-top:6px; }
+.tile {
+  border-radius:8px; padding:12px; min-height:80px; display:flex; flex-direction:column; justify-content:space-between;
+  cursor:pointer; border:1px solid rgba(255,255,255,0.1); color:#e6eef6;
+  transition: transform .12s ease, box-shadow .12s ease, opacity .2s ease;
+}
+.tile:hover { transform: translateY(-4px); box-shadow: 0 6px 18px rgba(0,0,0,0.4); }
+.tile .tile-title { font-weight:600; font-size:0.9rem; margin-bottom:4px; }
+.tile .tile-type { font-size:0.78rem; color:#a0aec0; }
+.tile img { width:20px; height:20px; margin-bottom:4px; }
+
+/* VNets/Subnets */
+.vnet-box {
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.05);
+  padding: 10px;
+  border-radius: 10px;
+  margin-bottom: 14px;
+}
+.security-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.small-tile {
+  width: 150px;
+  flex: 0 0 auto;
+}
+.subnet-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(100px,1fr)); gap:6px; margin-top:6px; }
+.subnet-tile { padding:6px; border-radius:6px; border:1px solid #4a4a5e; text-align:center; font-size:0.78rem; cursor:pointer; color:#e6eef6; }
+.subnet-name { font-weight:600; font-size:0.85rem; }
+.subnet-cidr { font-size:0.75rem; color:#a0aec0; }
+
+/* Dimmed style */
+.dimmed { opacity:0.3 !important; }
+
+@media (max-width:900px){ .blueprint-row{flex-direction:column;} .col-right{width:100%;} }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="mb-3">
+    <label class="form-label">Select an S1/S2 YAML definition file:</label>
+    <input id="yamlFile" type="file" class="form-control">
+  </div>
+
+  <div id="renderArea"></div>
+
+  <div class="mb-3">
+    <strong>Filter categories:</strong>
+    <button class="btn btn-sm btn-outline-primary" data-group="workload">Workload</button>
+    <button class="btn btn-sm btn-outline-primary" data-group="landingzone">Landing Zone</button>
+    <button class="btn btn-sm btn-outline-primary" data-group="surveillance">Surveillance</button>
+    <button class="btn btn-sm btn-outline-secondary" id="resetFilter">Reset</button>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="resourceModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content bg-dark text-light">
+      <div class="modal-header">
+        <h5 class="modal-title" id="resourceModalTitle">Resource</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="resourceDetails"></div>
+        <hr/>
+        <h6>Raw JSON</h6>
+        <pre id="resourceRaw" style="max-height:300px; overflow:auto;"></pre>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+<script>
+const renderArea=document.getElementById('renderArea');
+
+function resolveTemplate(template, vars) {
+    if(!template) return '';
+    return template.replace(/{(\w+)}/g, (_, k)=> vars[k]??`{${k}}`);
+}
+
+function showResourceModal(title,obj){
+    const modalEl=document.getElementById('resourceModal');
+    const titleEl=document.getElementById('resourceModalTitle');
+    const detailsEl=document.getElementById('resourceDetails');
+    const rawEl=document.getElementById('resourceRaw');
+
+    titleEl.textContent=title;
+    let detailsHtml='<table class="table table-sm table-dark"><tbody>';
+    for(const k of Object.keys(obj)){
+        let val=obj[k];
+        if(typeof val==='object') val='<pre>'+JSON.stringify(val,null,2)+'</pre>';
+        detailsHtml+=`<tr><th style="width:200px">${k}</th><td>${val}</td></tr>`;
+    }
+    detailsHtml+='</tbody></table>';
+    detailsEl.innerHTML=detailsHtml;
+    rawEl.textContent=JSON.stringify(obj,null,2);
+
+    new bootstrap.Modal(modalEl).show();
+}
+
+function renderBlueprint(bp){
+    renderArea.innerHTML='';
+
+    const varsBase={region:bp.region||'', org:bp.organization_name||'', pattern:bp.pattern_type||''};
+    if(bp.region_map && bp.region && bp.region_map[bp.region]) varsBase.region=bp.region_map[bp.region];
+
+    const subscription = (bp.subscriptions && bp.subscriptions[0]) ? bp.subscriptions[0] : { name:'default', id:''};
+    const resolvedSubName = resolveTemplate(bp.naming?.subscriptions||'sub-{region}-{org}-{pattern}-{name}', {...varsBase,name:subscription.name});
+
+    const subDiv=document.createElement('div');
+    subDiv.className='subscription-boundary c-core';
+    subDiv.dataset.group="subscription";
+    subDiv.innerHTML=`<div class="subscription-header">
+        <div class="subscription-title"><img src="img/sub.svg">${resolvedSubName}</div>
+        <div class="subscription-meta">ID: ${subscription.id || 'N/A'} • Pattern: ${bp.pattern_type || 'N/A'}</div>
+    </div>
+    <div class="blueprint-row">
+        <div class="col-left">
+            <div id="workloadArea" class="rg-card c-workload" data-group="workload"></div>
+            <div id="landingArea" class="rg-card c-core" data-group="landingzone"></div>
+        </div>
+        <div class="col-right">
+            <div id="surveillanceArea" class="rg-card c-observ" data-group="surveillance"></div>
+        </div>
+    </div>`;
+    renderArea.appendChild(subDiv);
+
+    const rgs = bp.resource_groups || [];
+
+    const workloadRGName = resolveTemplate(bp.naming?.resource_group||'rg-{region}-{org}-{pattern}-{name}', {...varsBase, name: rgs.find(n=>/workload/i.test(n))??'workload'});
+    const landingRGName = resolveTemplate(bp.naming?.resource_group||'rg-{region}-{org}-{pattern}-{name}', {...varsBase, name: rgs.find(n=>/landing/i.test(n))??'landingzone'});
+    const surveillanceRGName = resolveTemplate(bp.naming?.resource_group||'rg-{region}-{org}-{pattern}-{name}', {...varsBase, name: rgs.find(n=>/surveil|watch/i.test(n))??'surveillance'});
+
+    /** ------------------ WORKLOAD RG ------------------ **/
+    const workloadArea=document.getElementById('workloadArea');
+    workloadArea.innerHTML=`<div class="rg-title"><img src="img/rg.svg">${workloadRGName}</div>`;
+    const workloadWrap=document.createElement('div'); workloadWrap.className='tile-grid';
+    (bp.workload||[]).forEach(res=>{
+        const tile=document.createElement('div'); tile.className='tile c-workload';
+        tile.innerHTML=`<img src="img/${res.type}.svg" onerror="this.style.display='none'"><div class="tile-title">${res.name}</div><div class="tile-type">${res.type}</div>`;
+        tile.addEventListener('click',()=>showResourceModal(`${res.type}: ${res.name}`,res));
+        workloadWrap.appendChild(tile);
+    });
+    if(!bp.workload?.length) workloadWrap.innerHTML='<div class="tile">No Workload resources configured</div>';
+    workloadArea.appendChild(workloadWrap);
+
+
+    /** ------------------ LANDING ZONE RG ------------------ **/
+    const landingArea=document.getElementById('landingArea');
+    landingArea.innerHTML=`<div class="rg-title"><img src="img/rg.svg">${landingRGName}</div>`;
+    const lzWrap=document.createElement('div'); lzWrap.className='tile-grid';
+    landingArea.appendChild(lzWrap);
+
+    // security row under VNET
+    const securityRow = document.createElement("div");
+    securityRow.className = "security-row";
+    landingArea.appendChild(securityRow);
+
+    (bp.vnets||[]).forEach(vnet=>{
+        const vnetBox=document.createElement('div');
+        vnetBox.className='vnet-box c-core'; // solid background, no dashes
+
+        const resolvedVnetName = resolveTemplate(
+            bp.naming?.vnet||'vnet-{region}-{org}-{pattern}-{name}',
+            {...varsBase, name:vnet.name}
+        );
+
+        vnetBox.innerHTML = `
+          <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+              <img src="img/vnet.svg" onerror="this.style.display='none'" style="width:18px; height:18px;">
+              <div style="font-weight:600;">${resolvedVnetName}</div>
+          </div>
+          <div class="subnet-grid"></div>
+        `;
+
+        const grid=vnetBox.querySelector('.subnet-grid');
+
+        (vnet.subnets||[]).forEach(sn=>{
+            const tile=document.createElement('div');
+            tile.className='subnet-tile c-core';
+            tile.innerHTML=`
+                <img src="img/subnet.svg" style="width:18px; height:18px;">
+                <div class="subnet-name">${sn.name}</div>
+                <div class="subnet-cidr">${sn.cidr||'N/A'}</div>
+            `;
+            tile.addEventListener('click',()=>showResourceModal(
+                `Subnet: ${sn.name}`,
+                {...sn, parent_vnet:vnet.name, parent_vnet_cidr:vnet.cidr}
+            ));
+            grid.appendChild(tile);
+        });
+
+        if(!vnet.subnets?.length) {
+            grid.innerHTML='<div class="subnet-tile">No subnets configured</div>';
+        }
+
+        lzWrap.appendChild(vnetBox);
+    });
+
+    /** ---- NSG + NSP small tiles beneath VNET ---- **/
+    if (bp.custom_nsg_rules) {
+        const nsgTile = document.createElement('div');
+        nsgTile.className = 'tile c-security small-tile';
+        nsgTile.innerHTML = `
+            <img src="img/nsg.svg">
+            <div class="tile-title">NSG</div>
+            <div class="tile-type">${Object.keys(bp.custom_nsg_rules).length} rules</div>
+        `;
+        nsgTile.addEventListener('click',()=>showResourceModal('Network Security Groups',bp.custom_nsg_rules));
+        securityRow.appendChild(nsgTile);
+    }
+
+    if (bp.custom_nsp_rules) {
+        const nspTile = document.createElement('div');
+        nspTile.className = 'tile c-security small-tile';
+        nspTile.innerHTML = `
+            <img src="img/nsp.svg">
+            <div class="tile-title">NSP</div>
+            <div class="tile-type">${Object.keys(bp.custom_nsp_rules).length} rules</div>
+        `;
+        nspTile.addEventListener('click',()=>showResourceModal('Network Security Perimeter',bp.custom_nsp_rules));
+        securityRow.appendChild(nspTile);
+    }
+
+
+    /** ------------------ SURVEILLANCE RG ------------------ **/
+    const surveillanceArea=document.getElementById('surveillanceArea');
+    surveillanceArea.innerHTML=`<div class="rg-title"><img src="img/rg.svg">${surveillanceRGName}</div>`;
+    const survWrap=document.createElement('div'); survWrap.className='tile-grid c-observ';
+
+    if(bp.log_analytics_workspace){
+        const law=document.createElement('div'); law.className='tile c-observ';
+        law.innerHTML=`<img src="img/law.svg"><div class="tile-title">${bp.log_analytics_workspace}</div><div class="tile-type">Log Analytics</div>`;
+        law.addEventListener('click',()=>showResourceModal(`Log Analytics: ${bp.log_analytics_workspace}`,bp));
+        survWrap.appendChild(law);
+    }
+    if(bp.diagnostics_storage_account){
+        const diag=document.createElement('div'); diag.className='tile c-diagnostics';
+        diag.innerHTML=`<img src="img/storage-account.svg"><div class="tile-title">${bp.diagnostics_storage_account}</div><div class="tile-type">Diagnostics Storage</div>`;
+        diag.addEventListener('click',()=>showResourceModal(`Diagnostics Storage: ${bp.diagnostics_storage_account}`,bp));
+        survWrap.appendChild(diag);
+    }
+    if(bp.is_network_watcher_needed){
+        const nw=document.createElement('div'); nw.className='tile c-diagnostics';
+        nw.innerHTML=`<img src="img/network-watcher.svg"><div class="tile-title">Network Watcher</div>`;
+        nw.addEventListener('click',()=>showResourceModal('Network Watcher',bp));
+        survWrap.appendChild(nw);
+    }
+    if(bp.is_dashbord_needed){
+        const dash=document.createElement('div'); dash.className='tile c-observ';
+        dash.innerHTML=`<img src="img/dashboard.svg"><div class="tile-title">Dashboard</div>`;
+        dash.addEventListener('click',()=>showResourceModal('Dashboard',bp));
+        survWrap.appendChild(dash);
+    }
+
+    surveillanceArea.appendChild(survWrap);
+}
+
+// --- Filter logic ---
+document.getElementById('yamlFile').addEventListener('change', async ev=>{
+    const file=ev.target.files[0];
+    if(!file) return;
+    const text=await file.text();
+    try{
+        const doc=jsyaml.load(text);
+        renderBlueprint(doc);
+    }catch(e){alert("YAML parse error: "+e);}
+});
+
+document.querySelectorAll('[data-group]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+        const group=btn.dataset.group;
+        document.querySelectorAll('.subscription-boundary, .rg-card').forEach(el=>{
+            if(el.dataset.group && el.dataset.group!==group) el.classList.add('dimmed');
+            else el.classList.remove('dimmed');
+        });
+    });
+});
+
+document.getElementById('resetFilter').addEventListener('click',()=>{
+    document.querySelectorAll('.subscription-boundary, .rg-card').forEach(el=>el.classList.remove('dimmed'));
+});
+</script>
+</body>
+</html>
