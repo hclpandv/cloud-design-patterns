@@ -178,6 +178,7 @@ function renderBlueprint(bp){
         </div>
         <div class="col-right">
             <div id="surveillanceArea" class="rg-card c-observ" data-group="surveillance"></div>
+            <div id="governanceArea" class="tile-grid c-governance" style="margin-top:12px;"></div>
         </div>
     </div>`;
     renderArea.appendChild(subDiv);
@@ -225,7 +226,7 @@ function renderBlueprint(bp){
         vnetBox.innerHTML = `
           <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
               <img src="img/vnet.svg" onerror="this.style.display='none'" style="width:18px; height:18px;">
-              <div style="font-weight:600;">${resolvedVnetName}</div>
+              <div style="font-weight:600;">${resolvedVnetName} <span class="subnet-cidr">${vnet.cidr || 'N/A'}</span></div>
           </div>
           <div class="subnet-grid"></div>
         `;
@@ -311,6 +312,28 @@ function renderBlueprint(bp){
     }
 
     surveillanceArea.appendChild(survWrap);
+
+    /** ------------------ GOVERNANCE ------------------ **/
+    const governanceArea = document.getElementById('governanceArea');
+
+    // Append Azure Policy tile if it exists
+    if (bp.azure_policy) {
+        const policyTile = document.createElement('div');
+        policyTile.className = 'tile c-governance';
+        policyTile.innerHTML = `<img src="img/policy.svg"><div class="tile-title">Azure Policy</div><div class="tile-type">Governance</div>`;
+        policyTile.addEventListener('click', () => showResourceModal('Azure Policy', bp.azure_policy));
+        governanceArea.appendChild(policyTile);
+    }
+
+    // Append Alerts & Action Groups tile if it exists
+    if (bp.alerts) {
+        const alertsTile = document.createElement('div');
+        alertsTile.className = 'tile c-governance';
+        alertsTile.innerHTML = `<img src="img/alerts.svg"><div class="tile-title">Alerts & Action Groups</div><div class="tile-type">Monitoring</div>`;
+        alertsTile.addEventListener('click', () => showResourceModal('Alerts & Action Groups', bp.alerts));
+        governanceArea.appendChild(alertsTile);
+    }
+
 }
 
 // --- Filter logic ---

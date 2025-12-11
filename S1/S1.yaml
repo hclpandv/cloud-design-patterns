@@ -69,6 +69,19 @@ subscriptions:
   - name: main 
     id: s4am79pl-2081-4f1e-8vk4-5c600d3bafc2
 
+# Governance
+azure_policy:
+  enforce_tagging: true
+  allowed_locations:
+    - westeurope
+    - northeurope
+
+alerts:
+  high_cpu_alert:
+    metric: CPU
+    threshold: 80
+    action_group: admin-team
+
 # Resource Groups
 resource_groups:
   - landingzone
