@@ -86,8 +86,6 @@ body {
 </style>
 </head>
 <body>
-
-<div class="container">
   <div class="mb-3">
     <label class="form-label">Select an S1/S2 YAML definition file:</label>
     <input id="yamlFile" type="file" class="form-control">
@@ -96,34 +94,33 @@ body {
   <div id="renderArea"></div>
 
   <div class="mb-3">
-    <strong>Filter categories:</strong>
+    <!---- <strong>Filter categories:</strong> -->
     <button class="btn btn-sm btn-outline-primary" data-group="workload">Workload</button>
     <button class="btn btn-sm btn-outline-primary" data-group="landingzone">Landing Zone</button>
     <button class="btn btn-sm btn-outline-primary" data-group="surveillance">Surveillance</button>
     <button class="btn btn-sm btn-outline-secondary" id="resetFilter">Reset</button>
   </div>
-</div>
 
-<!-- Modal -->
-<div class="modal fade" id="resourceModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
-    <div class="modal-content bg-dark text-light">
-      <div class="modal-header">
-        <h5 class="modal-title" id="resourceModalTitle">Resource</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div id="resourceDetails"></div>
-        <hr/>
-        <h6>Raw JSON</h6>
-        <pre id="resourceRaw" style="max-height:300px; overflow:auto;"></pre>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+  <!-- Modal -->
+  <div class="modal fade" id="resourceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content bg-dark text-light">
+        <div class="modal-header">
+          <h5 class="modal-title" id="resourceModalTitle">Resource</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div id="resourceDetails"></div>
+          <hr/>
+          <h6>Raw JSON</h6>
+          <pre id="resourceRaw" style="max-height:300px; overflow:auto;"></pre>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
@@ -350,7 +347,7 @@ document.getElementById('yamlFile').addEventListener('change', async ev=>{
 document.querySelectorAll('[data-group]').forEach(btn=>{
     btn.addEventListener('click',()=>{
         const group=btn.dataset.group;
-        document.querySelectorAll('.subscription-boundary, .rg-card').forEach(el=>{
+        document.querySelectorAll('.rg-card').forEach(el=>{
             if(el.dataset.group && el.dataset.group!==group) el.classList.add('dimmed');
             else el.classList.remove('dimmed');
         });
@@ -358,7 +355,7 @@ document.querySelectorAll('[data-group]').forEach(btn=>{
 });
 
 document.getElementById('resetFilter').addEventListener('click',()=>{
-    document.querySelectorAll('.subscription-boundary, .rg-card').forEach(el=>el.classList.remove('dimmed'));
+    document.querySelectorAll('.rg-card').forEach(el=>el.classList.remove('dimmed'));
 });
 </script>
 </body>
