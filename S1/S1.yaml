@@ -125,6 +125,8 @@ is_dashbord_needed: yes
 workload:
   - name: vm01
     type: virtual-machine
+  - name: app01
+    type: app-service
   - name: st01
     type: storage-account
 
