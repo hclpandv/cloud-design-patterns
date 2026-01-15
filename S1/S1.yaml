@@ -84,9 +84,12 @@ alerts:
 
 # Resource Groups
 resource_groups:
-  - landingzone
-  - workload
-  - surveillance
+  - name: landingzone
+    type: network
+  - name: workload
+    type: workload
+  - name: surveillance
+    type: surveillance
   #- watchtower
 
 # Virtual Network

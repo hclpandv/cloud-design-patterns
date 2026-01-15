@@ -12,3 +12,9 @@ NSPAccessLogs
 | where OperationName == "GetBlob" and TimeGenerated > ago(30m) 
 | project TimeGenerated, Location, ResultAction, ResultDirection, ResultDescription, SourceIpAddress
 ```
+
+# Public GH page serves below service:
+
+
+1. Azure blueprint viewer:  https://hclpandv.github.io/cloud-design-patterns/
+2. Flowchart viewer: https://hclpandv.github.io/cloud-design-patterns/flowchart
