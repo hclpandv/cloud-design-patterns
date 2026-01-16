@@ -42,7 +42,7 @@
 <body>
 
 <h1 id="title"></h1>
-<p style="text-align:center;color:#94a3b8">Upload YAML to render flow</p>
+<p id="hint" style="text-align:center;color:#94a3b8">Upload YAML to render flow</p>
 
 <div class="file-box">
     <input type="file" id="yamlFile" class="form-control">
@@ -75,6 +75,7 @@ document.getElementById("yamlFile").addEventListener("change", e => {
 
     stepsData = data.flowchart.steps || [];
     render();
+    document.getElementById("hint").innerText = "Click any step to see details";
   };
   reader.readAsText(file);
 });
