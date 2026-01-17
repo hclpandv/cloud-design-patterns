@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Server Provisioning Workflow</title>
+<title>Flowchart Visualizer</title>
+<link rel="icon" type="image/png" href="img/workflow.png">
 
 <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
 
@@ -35,26 +36,48 @@
         width: 260px;
         z-index: 9999;
     }
+    .hero {
+      text-align: center;
+      margin-top: 80px;
+    }
+    .hero h1 { font-size: 42px; }
+    .hero h2 { color: #38bdf8; margin-top: 10px; }
+    .hero p { color: #94a3b8; max-width: 700px; margin: 12px auto; }
+    .hero .hint { margin-top: 20px; color: #e5e7eb; }
 </style>
 
-
 </head>
+
 <body>
 
 <h1 id="title"></h1>
 
-<p id="hint" style="text-align:center;color:#94a3b8">
-  Upload YAML to render flow —
-  <a href="https://github.com/hclpandv/cloud-design-patterns/blob/main/docs/flowchart_sample.yml"
-     target="_blank"
-     style="color:#38bdf8;text-decoration:none;">
-     download sample
-  </a>
-</p>
+<p id="hint" style="text-align:center;color:#94a3b8"></p>
+
+<div id="hero" class="hero">
+  <h1>Flowchart Visualizer</h1>
+  <h2>Private • Fast • Reliable Workflow Design</h2>
+  <p>
+    A lightweight tool that turns simple YAML files into
+    interactive, clickable flowcharts.
+  </p>
+  <p>
+    Perfect for architects, DevOps engineers, and platform teams. Design in text. View in motion.
+  </p>
+  
+  <p class="hint">
+    Upload a YAML file to begin — or
+    <a href="https://github.com/hclpandv/cloud-design-patterns/blob/main/docs/flowchart_sample.yml"
+       target="_blank"
+       style="color:#38bdf8;text-decoration:none;">
+      view a sample
+    </a>
+  </p>
+</div>
 
 <div class="file-box">
     <input type="file" id="yamlFile" class="form-control">
-  </div>
+</div>
 
 <div id="flow" class="flow"></div>
 
@@ -65,6 +88,28 @@
     <div id="modal-body"></div>
   </div>
 </div>
+
+
+<!-- Footer credit -->
+<div id="footer-credit" style="
+    position: fixed;
+    bottom: 10px;           /* space from bottom */
+    width: 100%;
+    text-align: center;
+    font-size: 0.85em;
+    color: #94a3b8;
+    padding: 6px 0;
+    background: rgba(15,23,42,0.9);
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.4);
+    z-index: 9999;
+">
+  🛠️ Parts of this page were developed with assistance from 
+  <a href="https://openai.com/chatgpt" target="_blank" style="color:#38bdf8; text-decoration:none;">
+    ChatGPT
+  </a> by OpenAI
+</div>
+
+
 
 <script>
 let stepsData = [];
@@ -84,6 +129,8 @@ document.getElementById("yamlFile").addEventListener("change", e => {
     stepsData = data.flowchart.steps || [];
     render();
     document.getElementById("hint").innerText = "Click any step to see details";
+    document.getElementById("hero").style.display = "none";
+    document.getElementById("footer-credit").style.display = "none";
   };
   reader.readAsText(file);
 });
