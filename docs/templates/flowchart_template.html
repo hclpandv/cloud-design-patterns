@@ -42,6 +42,17 @@ function openModal(title, body) {
 function closeModal() {
   document.querySelector(".modal").style.display = "none";
 }
+
+// Attach click handlers after DOM loads
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll('.step').forEach(el => {
+    el.addEventListener('click', () => {
+      const title = decodeURIComponent(el.dataset.title || "");
+      const body = decodeURIComponent(el.dataset.details || "");
+      openModal(title, body);
+    });
+  });
+});
 </script>
 
 </body>

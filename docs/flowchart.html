@@ -77,6 +77,12 @@
 
 <div class="file-box">
     <input type="file" id="yamlFile" class="form-control">
+    <button id="downloadBtn"
+      style="display:none;margin-top:10px;padding:8px 14px;
+            background:#1e293b;color:#e5e7eb;border:none;border-radius:8px;
+            cursor:pointer;box-shadow:0 0 10px rgba(56,189,248,0.3);">
+      💾 Download flowchart
+    </button>
 </div>
 
 <div id="flow" class="flow"></div>
@@ -109,10 +115,11 @@
   </a> by OpenAI
 </div>
 
-
-
 <script>
 let stepsData = [];
+const TEMPLATE_URL =
+  "https://raw.githubusercontent.com/hclpandv/cloud-design-patterns/main/docs/templates/flowchart_template.html";
+
 
 document.getElementById("yamlFile").addEventListener("change", e => {
   const file = e.target.files[0];
@@ -131,6 +138,7 @@ document.getElementById("yamlFile").addEventListener("change", e => {
     document.getElementById("hint").innerText = "Click any step to see details";
     document.getElementById("hero").style.display = "none";
     document.getElementById("footer-credit").style.display = "none";
+    document.getElementById("downloadBtn").style.display = "block";
   };
   reader.readAsText(file);
 });
@@ -162,6 +170,46 @@ function openModal(title, body) {
 function closeModal() {
   document.getElementById("modal").style.display = "none";
 }
+
+document.getElementById("downloadBtn").addEventListener("click", () => {
+  if (!stepsData.length) return alert("Upload YAML first");
+
+  fetch(TEMPLATE_URL)
+    .then(r => r.text())
+    .then(template => {
+      let stepsHtml = "";
+
+      stepsData.forEach((s, i) => {
+        const name = encodeURIComponent(s.name || "");
+        const details = encodeURIComponent(s.details || "");
+        const sub = s.subtitle || "";
+
+        // Put data in attributes instead of inline onclick
+        stepsHtml +=
+          `<div class="step" data-title="${name}" data-details="${details}">
+             ${s.name}<span>${sub}</span>
+           </div>`;
+
+        if (i < stepsData.length - 1) {
+          stepsHtml += '<div class="arrow">⬇️</div>';
+        }
+      });
+
+      const html = template
+        .replace(/{{TITLE}}/g, document.getElementById("title").innerText)
+        .replace(/{{STEPS}}/g, stepsHtml);
+
+      const blob = new Blob([html], { type: "text/html" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "flowchart.html";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    })
+    .catch(() => alert("Failed to load template"));
+});
+
+
 </script>
 
 </body>
