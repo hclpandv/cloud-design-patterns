@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>{{TITLE}}</title>
+<style>
+  body { font-family: Arial,sans-serif; background:#0f172a; color:#e5e7eb; padding:20px; }
+  h1 { text-align:center; }
+  .flow { display:flex; flex-direction:column; align-items:center; gap:16px; }
+  .step { background:#1e293b; border-radius:10px; padding:14px 22px; min-width:300px;
+         text-align:center; cursor:pointer; transition:0.2s; }
+  .step:hover { background:#334155; transform:translateY(-5px); }
+  .step span { display:block; margin-top:6px; font-size:12px; color:#94a3b8; }
+  .arrow { font-size:24px; }
+  .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7);
+           justify-content:center; align-items:center; }
+  .modal-content { background:#020617; padding:25px; border-radius:12px; max-width:600px; width:90%; }
+  .close { float:right; cursor:pointer; color:#f87171; font-weight:bold; }
+</style>
+</head>
+<body>
+
+<h1>{{TITLE}}</h1>
+<div class="flow">
+{{STEPS}}
+</div>
+
+<div class="modal" onclick="closeModal()">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <span class="close" onclick="closeModal()">✖</span>
+    <h2 id="modal-title"></h2>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+function openModal(title, body) {
+  document.getElementById("modal-title").innerText = title;
+  document.getElementById("modal-body").innerHTML = body;
+  document.querySelector(".modal").style.display = "flex";
+}
+function closeModal() {
+  document.querySelector(".modal").style.display = "none";
+}
+</script>
+
+</body>
+</html>
