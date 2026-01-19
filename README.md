@@ -1,4 +1,4 @@
-# randon notes
+## randon notes
 
 ```kql
 NTANetAnalytics 
@@ -13,8 +13,9 @@ NSPAccessLogs
 | project TimeGenerated, Location, ResultAction, ResultDirection, ResultDescription, SourceIpAddress
 ```
 
-# Public GH page serves below service:
+#### Public GH page serves below tools for architects and devops engineers:
 
 
 1. Azure blueprint viewer:  https://hclpandv.github.io/cloud-design-patterns/
 2. Flowchart viewer: https://hclpandv.github.io/cloud-design-patterns/flowchart
+
