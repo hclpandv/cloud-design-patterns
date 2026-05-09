@@ -1,5 +1,5 @@
 flowchart:
-  description: "🤖 Server Provisioning Workflow"
+  description: "🤖 A smart Workflow"
   steps:
     - key: start
       name: "🟢 Start"
@@ -7,30 +7,30 @@ flowchart:
       details: |
        some details
 
-    - key: service_catalog
-      name: "💳 Customer submits service request"
-      subtitle: "🧑‍💼 Service Catalog form → Provisioning Ticket"
+    - key: step_01
+      name: "💳 Customer submits request"
+      subtitle: "🧑‍💼 Request form"
       details: |
-        Customer fills in the service catalog, which automatically generates a provisioning ticket.
+        Customer fills in the service request.
         <code>User inputs are captured and added to the ticket as an internal note in YAML format</code>
         <pre><code>
         ---
         # Example yml
         user_input: 
-            - server_name: sql01
-            - sku: 4cpu16gb
+            - user_name: username
+            - server_name: service_01
             - ....
         </code></pre>
     
-    - key: webhook_trigger
-      name: "⚡ Webhook trigger"
-      subtitle: "HaloPSA Webhook → GitLab Pipeline"
+    - key: step_01
+      name: "⚡ Webhook trigger 01"
+      subtitle: "Webhook trigger 01"
       details: |
         Some details
 
-    - key: gitlab_pipeline
-      name: "🚀 GitLab pipeline"
-      subtitle: "Reads YAML inputs from HaloPSA ticket"
+    - key: azure function trigger
+      name: "🚀 azure function trigger"
+      subtitle: "Reads yaml inputs"
       details: |
         Some details
     
