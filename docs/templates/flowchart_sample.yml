@@ -12,7 +12,7 @@ flowchart:
       subtitle: "🧑‍💼 Request form"
       details: |
         Customer fills in the service request.
-        <code>User inputs are captured and added to the ticket as an internal note in YAML format</code>
+        <code>Inputs are captured</code>
         <pre><code>
         ---
         # Example yml
@@ -22,13 +22,13 @@ flowchart:
             - ....
         </code></pre>
     
-    - key: step_01
+    - key: step_02
       name: "⚡ Webhook trigger 01"
       subtitle: "Webhook trigger 01"
       details: |
         Some details
 
-    - key: azure function trigger
+    - key: step_03
       name: "🚀 azure function trigger"
       subtitle: "Reads yaml inputs"
       details: |
