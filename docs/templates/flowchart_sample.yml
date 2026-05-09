@@ -1,37 +1,59 @@
 flowchart:
-  description: "🤖 A smart Workflow"
+  description: "🧠 A General Decision Flow"
+
   steps:
     - key: start
-      name: "🟢 Start"
-      subtitle: "How it all started?"
+      name: "🟢 Entry Point"
+      subtitle: "A signal or idea appears"
       details: |
-       some details
+        Every process starts with an input — it could be a thought, event, signal, or trigger.
 
-    - key: step_01
-      name: "💳 Customer submits request"
-      subtitle: "🧑‍💼 Request form"
-      details: |
-        Customer fills in the service request.
-        <code>Inputs are captured</code>
-        <pre><code>
-        ---
-        # Example yml
-        user_input: 
-            - user_name: username
-            - server_name: service_01
-            - ....
-        </code></pre>
-    
-    - key: step_02
-      name: "⚡ Webhook trigger 01"
-      subtitle: "Webhook trigger 01"
-      details: |
-        Some details
+        This is where ambiguity begins.
 
-    - key: step_03
-      name: "🚀 azure function trigger"
-      subtitle: "Reads yaml inputs"
+    - key: observe
+      name: "👁️ Observation"
+      subtitle: "What is happening?"
       details: |
-        Some details
-    
-    
+        The system or user observes incoming information.
+
+        At this stage:
+        - Data is raw
+        - Meaning is not yet defined
+        - Context is being formed
+
+    - key: interpret
+      name: "🧩 Interpretation"
+      subtitle: "Assign meaning"
+      details: |
+        Information is analyzed and interpreted.
+
+        Patterns start emerging and structure is applied to raw input.
+
+        This step converts noise into understanding.
+
+    - key: decision
+      name: "⚖️ Decision Point"
+      subtitle: "Choose a direction"
+      details: |
+        Based on interpretation, a decision is made.
+
+        This is where the flow may branch or continue linearly.
+
+    - key: action
+      name: "🚀 Action / Transformation"
+      subtitle: "Something changes"
+      details: |
+        The decision is executed.
+
+        This could result in:
+        - a transformation
+        - a response
+        - a new state of the system
+
+    - key: outcome
+      name: "🎯 Outcome"
+      subtitle: "Final result"
+      details: |
+        The process reaches a stable output or observable result.
+
+        This outcome may become the input for another cycle.
